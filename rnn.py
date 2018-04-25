@@ -6,7 +6,6 @@ import collections
 import time
 
 
-
 start_time = time.time()
 
 
@@ -27,10 +26,12 @@ writer = tf.summary.FileWriter(logs_path)
 training_file = "./example.txt"
 
 
-def read_data(fname):
-    with open(fname) as f:
+def read_data(training_file):
+    with open(training_file, encoding="utf8") as f:
         content = f.readlines()
     content = [x.strip() for x in content]
+    # remove the '' (empty string) after strip()
+    content = [x for x in content if len(x)>0]
     content = [content[i].split() for i in range(len(content))]
     content = np.array(content)
     content = np.reshape(content, [-1, ])
@@ -41,8 +42,8 @@ training_data = read_data(training_file)
 print("Loading training data...")
 
 
-def build_dataset(words):
-    count = collection.Counter(words).most_common()
+def build_dataset(training_data):
+    count = collections.Counter(data for data_list in training_data for data in data_list).most_common()
     dictionary = dict()
     for word, _ in count:
         dictionary[word] = len(dictionary)
@@ -54,7 +55,7 @@ dictionary, reverse_dictionary = build_dataset(training_data)
 vocab_size = len(dictionary)
 
 # Parameters
-leraning_rate = 0.001
+learning_rate = 0.001
 training_iters = 50000
 display_step = 1000
 n_input = 3
@@ -96,10 +97,10 @@ def RNN(x, weights, biases):
     # we only want the last output
     return tf.matmul(outputs[-1], weights['out']) + biases['out']
 
-pred = RNN(x, weights, biases
+pred = RNN(x, weights, biases)
 
 # loss and optimizer
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=pred, labels=y))
 optimizer = tf.train.RMSPropOptimizer(learning_rate = learning_rate).minimize(cost)
 
 # model eveluation
@@ -110,7 +111,11 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.global_variables_initializer()
 
 # launch the graph
+session = tf.Session()
+
 with tf.Session() as session:
+
+
     session.run(init)
     step = 0
     offset = random.randint(0, n_input+1)
@@ -124,7 +129,9 @@ with tf.Session() as session:
         # generate a minibatch, add some randomness on selection process
         if offset > (len(training_data)-end_offset):
             offset = random.randint(0, n_input+1)
-
+        # i = 0
+        # NOTE: need to have a look from here
+        # WIP
         symbols_in_keys = [[dictionary[str(training_data[i])]] for i in range(offset, offset+n_input)]
         symbols_in_keys = np.reshape(np.array(symbols_in_keys), [-1, n_input, 1])
 
